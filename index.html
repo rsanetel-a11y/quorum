@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quorum</title>
+<meta name="description" content="A roundtable where frontier AI models deliberate on your question in turn, and the chair delivers one answer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, like the minutes of a meeting. Agenda on top, the pixel room beneath it, each turn in a seat-marked row, the chair's resolution at the foot. */
+:root {
+  --paper: #EDF0EE;
+  --paper-2: #F8F9F7;
+  --ink: #16201C;
+  --ink-2: #51605A;
+  --line: #CBD2CE;
+  --line-2: #DEE3E0;
+  --accent: #1F6B4F;
+  --accent-ink: #FFFFFF;
+  --brass: #9C7527;
+  --danger: #A33A2C;
+  --seat-1: #B5542C;
+  --seat-2: #1E7A6E;
+  --seat-3: #4F5FC9;
+  --seat-4: #8B3A6B;
+  --seat-5: #2C4F9E;
+  --seat-6: #6B6F2A;
+  --seat-7: #9A4A1F;
+  --seat-8: #3C7A9A;
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151A18; --paper-2: #1D2320; --ink: #E6E8E4; --ink-2: #9AA49E;
+    --line: #2F3733; --line-2: #262D2A; --accent: #4FA87F; --accent-ink: #0F1512;
+    --brass: #D3A64A; --danger: #E06A58;
+    --seat-1: #E07A50; --seat-2: #3FB3A3; --seat-3: #8A97F0; --seat-4: #C96AA4;
+    --seat-5: #6E8DE0; --seat-6: #A9AE55; --seat-7: #D77A45; --seat-8: #67AED2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151A18; --paper-2: #1D2320; --ink: #E6E8E4; --ink-2: #9AA49E;
+  --line: #2F3733; --line-2: #262D2A; --accent: #4FA87F; --accent-ink: #0F1512;
+  --brass: #D3A64A; --danger: #E06A58;
+  --seat-1: #E07A50; --seat-2: #3FB3A3; --seat-3: #8A97F0; --seat-4: #C96AA4;
+  --seat-5: #6E8DE0; --seat-6: #A9AE55; --seat-7: #D77A45; --seat-8: #67AED2;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { height: 100%; }
+body {
+  margin: 0; min-height: 100%;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: 15.5px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 880px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: var(--accent); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Masthead */
+.masthead { border-bottom: 1px solid var(--line); background: var(--paper); }
+.masthead-in { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 18px 14px; }
+.brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.wordmark { font-family: var(--font-display); font-weight: 600; font-size: 28px; letter-spacing: -0.01em; font-variation-settings: "opsz" 48; }
+.tagline { color: var(--ink-2); font-size: 14px; }
+.masthead-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); }
+.status.live { color: var(--accent); }
+.status.live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 7px; vertical-align: 1px; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper-2); cursor: pointer; font-weight: 500; font-size: 14px; line-height: 1.2; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn.danger { color: var(--danger); }
+.btn[disabled] { opacity: .5; cursor: default; }
+
+/* Agenda */
+main.wrap { padding-block: 28px 56px; }
+.eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.agenda { background: var(--paper-2); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px 16px; }
+.agenda .eyebrow { display: block; margin-bottom: 8px; }
+#question {
+  display: block; width: 100%; resize: vertical; min-height: 84px;
+  border: 0; border-bottom: 1px solid var(--line-2); background: transparent; color: var(--ink);
+  font-family: var(--font-display); font-size: 21px; line-height: 1.4; font-variation-settings: "opsz" 24;
+  padding: 4px 0 12px;
+}
+#question::placeholder { color: var(--ink-2); opacity: .8; }
+#question:focus { outline: none; border-bottom-color: var(--accent); }
+.agenda-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+.seats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.seat {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-size: 13.5px; font-weight: 500;
+  color: var(--ink-2);
+}
+.seat .dot { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 12px; color: #fff; background: var(--line); }
+.seat.on { color: var(--ink); border-color: var(--seat); background: color-mix(in srgb, var(--seat) 10%, var(--paper)); }
+.seat.on .dot { background: var(--seat); }
+.seat .chair-badge { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--brass); }
+.seat.warn { border-style: dashed; }
+.seat.add { border-style: dashed; color: var(--ink-2); padding-left: 12px; }
+.agenda-actions { display: flex; align-items: center; gap: 10px; }
+.agenda-meta { margin: 12px 0 0; font-size: 13px; color: var(--ink-2); }
+.agenda-meta button { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* The room */
+.room { margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper-2); }
+.room canvas { display: block; max-width: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* Minutes */
+.minutes { margin-top: 32px; display: flex; flex-direction: column; gap: 22px; }
+.sample-note { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; border: 1px dashed var(--line); border-radius: var(--radius); padding: 10px 14px; font-size: 13.5px; color: var(--ink-2); }
+.sample-note strong { color: var(--ink); font-weight: 600; }
+.item { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: start; }
+.item .eyebrow { padding-top: 6px; }
+.item h2 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 24px; line-height: 1.3; text-wrap: balance; font-variation-settings: "opsz" 30; min-width: 0; overflow-wrap: anywhere; }
+.pass-head { display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); margin-top: 8px; }
+.pass-head::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.turn { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: start; }
+.seat-mark { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--seat); color: #fff; font-family: var(--font-display); font-weight: 600; font-size: 15px; margin-top: 2px; }
+.turn-body { min-width: 0; }
+.turn-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.speaker { font-weight: 600; color: var(--seat); }
+.model-id { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.turn-state { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.turn-state.speaking { color: var(--accent); }
+.turn-state.absent { color: var(--danger); }
+.turn-text { max-width: 66ch; }
+.turn-text.streaming::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; margin-left: 1px; }
+@keyframes blink { to { opacity: 0 } }
+.turn-text .err { color: var(--danger); font-size: 14px; }
+
+/* Markdown */
+.md p { margin: 0 0 .75em; }
+.md p:last-child { margin-bottom: 0; }
+.md ul, .md ol { margin: 0 0 .75em; padding-left: 1.35em; }
+.md li { margin: .2em 0; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.3; margin: 1em 0 .4em; font-variation-settings: "opsz" 20; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 18px; } .md h3, .md h4 { font-size: 16px; }
+.md :is(h1,h2,h3,h4):first-child { margin-top: 0; }
+.md blockquote { margin: 0 0 .75em; padding-left: 12px; border-left: 2px solid var(--line); color: var(--ink-2); }
+.md code { font-family: var(--font-mono); font-size: .9em; background: color-mix(in srgb, var(--ink) 7%, transparent); padding: .1em .35em; border-radius: 4px; }
+.md pre { overflow-x: auto; background: color-mix(in srgb, var(--ink) 6%, transparent); padding: 12px 14px; border-radius: var(--radius); margin: 0 0 .75em; }
+.md pre code { background: none; padding: 0; font-size: 13px; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 1em 0; }
+.md strong { font-weight: 600; }
+
+/* Resolution */
+.resolution { background: var(--paper-2); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 18px 22px 20px; margin-top: 6px; }
+.resolution-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.resolution-head .eyebrow { color: var(--accent); }
+.resolution-head .by { font-size: 13px; color: var(--ink-2); }
+.resolution .md { max-width: 70ch; font-size: 16px; }
+.resolution .md h2 { color: var(--ink); }
+.adjourn { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); margin: 0; }
+
+/* Dialogs */
+dialog { border: 1px solid var(--line); background: var(--paper-2); color: var(--ink); border-radius: 10px; padding: 0; width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+dialog::backdrop { background: rgba(8, 12, 10, .5); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 12px; border-bottom: 1px solid var(--line-2); }
+.dlg-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; font-variation-settings: "opsz" 24; }
+.dlg-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > .label { font-size: 13px; font-weight: 600; }
+.field .hint { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+.field input[type=text], .field input[type=password], .field input[type=search], .field select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); font: inherit; font-size: 14px;
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > * { min-width: 0; }
+.row .grow { flex: 1 1 200px; }
+.radio-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.radio-row label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: 13.5px; background: var(--paper); }
+.radio-row input { margin: 0; }
+.radio-row label:has(input:checked) { border-color: var(--accent); color: var(--ink); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+.roster { display: flex; flex-direction: column; gap: 6px; }
+.roster-row { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--paper); }
+.roster-row .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 12px; color: #fff; background: var(--seat); }
+.roster-row .names { min-width: 0; display: flex; flex-direction: column; }
+.roster-row .names input { border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--ink); padding: 0; width: 100%; }
+.roster-row .names input:focus { outline: none; border-bottom: 1px solid var(--accent); }
+.roster-row .names .model-id { font-size: 11.5px; }
+.roster-row .warn-txt { color: var(--danger); font-family: var(--font-mono); font-size: 11px; }
+.dlg-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 20px 16px; border-top: 1px solid var(--line-2); }
+.model-list { max-height: 44vh; overflow: auto; border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--paper); }
+.model-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line-2); background: transparent; cursor: pointer; }
+.model-row:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.model-row:last-child { border-bottom: 0; }
+.model-row .nm { font-weight: 500; font-size: 14px; }
+.model-row .price { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.model-row .model-id { display: block; }
+.empty { padding: 16px; color: var(--ink-2); font-size: 13.5px; }
+
+.colophon { padding-block: 0 40px; font-size: 12.5px; color: var(--ink-2); }
+.colophon p { margin: 0 0 6px; max-width: 70ch; }
+
+@media (max-width: 560px) {
+  .wordmark { font-size: 24px; }
+  .agenda { padding: 14px 14px 12px; }
+  #question { font-size: 18px; }
+  .item, .turn { grid-template-columns: 34px 1fr; gap: 10px; }
+  .seat-mark { width: 30px; height: 30px; font-size: 13px; }
+  .item h2 { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status.live::before, .turn-text.streaming::after { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-in">
+    <div class="brand">
+      <span class="wordmark">Quorum</span>
+      <span class="tagline">Frontier models deliberate in turn. The chair answers.</span>
+    </div>
+    <div class="masthead-actions">
+      <span id="status" class="status" aria-live="polite">Not in session</span>
+      <button id="btnSettings" class="btn ghost small" type="button">Settings</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="agenda" aria-labelledby="agendaLabel">
+    <label id="agendaLabel" class="eyebrow" for="question">Agenda</label>
+    <textarea id="question" rows="3" placeholder="What should the room take up?"></textarea>
+    <div class="agenda-foot">
+      <div class="seats" id="seats" aria-label="Attendees"></div>
+      <div class="agenda-actions">
+        <button id="btnStop" class="btn ghost danger" type="button" hidden>Adjourn early</button>
+        <button id="btnConvene" class="btn primary" type="button">Convene</button>
+      </div>
+    </div>
+    <p class="agenda-meta" id="agendaMeta"></p>
+  </section>
+
+  <section class="room" aria-label="The meeting room">
+    <canvas id="room" role="img" aria-label="Pixel-art meeting room showing each attending model at the table; the speaker has a speech bubble, finished speakers a check mark, and the chair writes the resolution."></canvas>
+  </section>
+
+  <section class="minutes" id="minutes"></section>
+</main>
+
+<footer class="wrap colophon">
+  <p>Quorum runs entirely in this browser tab. Your question and the transcript go only to OpenRouter, which routes each turn to the model that owns it. Your key stays in this browser.</p>
+  <p>Open source under the MIT license. Bring your own OpenRouter key; nothing is hosted or logged by Quorum itself.</p>
+</footer>
+
+<dialog id="settings" aria-labelledby="settingsTitle">
+  <div class="dlg-head">
+    <h2 id="settingsTitle">Settings</h2>
+    <button class="btn ghost small" type="button" data-close>Close</button>
+  </div>
+  <div class="dlg-body">
+    <div class="field">
+      <label for="apiKey">OpenRouter API key</label>
+      <div class="row">
+        <input class="grow" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-or-v1-…">
+        <button class="btn small" type="button" id="btnShowKey">Show</button>
+      </div>
+      <p class="hint">One key covers every model. Create one at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a> and add a few dollars of credit. Saved in this browser only.</p>
+    </div>
+
+    <div class="field">
+      <span class="label">Attendees</span>
+      <div class="roster" id="roster"></div>
+      <div class="row">
+        <button class="btn small" type="button" id="btnAddModel">Add a model…</button>
+        <p class="hint">Click a name to rename it; that is how the others will address it.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="chairSel">Chair</label>
+      <select id="chairSel"></select>
+      <p class="hint">Speaks last in each pass, then writes the resolution.</p>
+    </div>
+
+    <div class="field">
+      <span class="label">Passes around the table</span>
+      <div class="radio-row" id="passesRow">
+        <label><input type="radio" name="passes" value="1"> 1 · positions only</label>
+        <label><input type="radio" name="passes" value="2"> 2 · positions, then responses</label>
+        <label><input type="radio" name="passes" value="3"> 3 · a second round of responses</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">Turn length</span>
+      <div class="radio-row" id="lengthRow">
+        <label><input type="radio" name="length" value="brief"> Brief · ~120 words</label>
+        <label><input type="radio" name="length" value="standard"> Standard · ~220 words</label>
+        <label><input type="radio" name="length" value="thorough"> Thorough · ~450 words</label>
+      </div>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn primary" type="button" id="btnSaveSettings">Save</button>
+  </div>
+</dialog>
+
+<dialog id="picker" aria-labelledby="pickerTitle">
+  <div class="dlg-head">
+    <h2 id="pickerTitle">Add a model</h2>
+    <button class="btn ghost small" type="button" data-close>Close</button>
+  </div>
+  <div class="dlg-body">
+    <div class="field">
+      <label for="modelSearch">Search OpenRouter's catalog</label>
+      <input id="modelSearch" type="search" placeholder="claude, gpt, gemini, grok, deepseek, llama…" autocomplete="off">
+    </div>
+    <div class="model-list" id="modelList"><div class="empty">Loading the catalog…</div></div>
+    <div class="field">
+      <label for="manualId">Or add by model id</label>
+      <div class="row">
+        <input class="grow" id="manualId" type="text" placeholder="provider/model-name" autocomplete="off" spellcheck="false">
+        <button class="btn small" type="button" id="btnAddManual">Add</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+
+const OR = 'https://openrouter.ai/api/v1';
+const STORE = 'quorum.v1';
+
+const DEFAULT_SEATS = [
+  { id: 'anthropic/claude-sonnet-5.5', name: 'Claude', hue: 1, on: true },
+  { id: 'openai/gpt-6.1-sol',          name: 'GPT',    hue: 2, on: true },
+  { id: 'google/gemini-4-argon',       name: 'Gemini', hue: 3, on: true },
+  { id: 'x-ai/grok-4.7',               name: 'Grok',   hue: 4, on: true },
+];
+const LENGTHS = {
+  brief:    { words: 120, tokens: 500  },
+  standard: { words: 220, tokens: 900  },
+  thorough: { words: 450, tokens: 1800 },
+};
+
+const state = {
+  key: '',
+  seats: DEFAULT_SEATS.map(s => ({ ...s })),
+  chair: 'anthropic/claude-sonnet-5.5',
+  passes: 2,
+  length: 'standard',
+  running: false,
+  abort: null,
+  catalog: null,       // live model list from OpenRouter, or null
+  catalogError: null,
+  missing: new Set(),  // seat ids not found in the catalog
+};
+
+const $ = (sel, el = document) => el.querySelector(sel);
+const els = {
+  status: $('#status'), question: $('#question'), seats: $('#seats'), meta: $('#agendaMeta'),
+  convene: $('#btnConvene'), stop: $('#btnStop'), minutes: $('#minutes'),
+  settings: $('#settings'), picker: $('#picker'), apiKey: $('#apiKey'), showKey: $('#btnShowKey'),
+  roster: $('#roster'), chairSel: $('#chairSel'), addModel: $('#btnAddModel'), saveSettings: $('#btnSaveSettings'),
+  modelSearch: $('#modelSearch'), modelList: $('#modelList'), manualId: $('#manualId'), addManual: $('#btnAddManual'),
+};
+
+/* ---------- persistence (per-browser convenience; everything works without it) ---------- */
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (typeof d.key === 'string') state.key = d.key;
+    if (Array.isArray(d.seats) && d.seats.length) state.seats = d.seats.map(s => ({ id: String(s.id), name: String(s.name || s.id), hue: Number(s.hue) || 1, on: s.on !== false }));
+    if (typeof d.chair === 'string') state.chair = d.chair;
+    if ([1, 2, 3].includes(d.passes)) state.passes = d.passes;
+    if (LENGTHS[d.length]) state.length = d.length;
+  } catch (e) { /* storage unavailable: run with defaults */ }
+}
+function save() {
+  try {
+    localStorage.setItem(STORE, JSON.stringify({ key: state.key, seats: state.seats, chair: state.chair, passes: state.passes, length: state.length }));
+  } catch (e) { /* ignore */ }
+}
+
+/* ---------- helpers ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const initial = name => (name.trim()[0] || '?').toUpperCase();
+const attending = () => state.seats.filter(s => s.on);
+const chairSeat = () => attending().find(s => s.id === state.chair) || attending()[attending().length - 1] || null;
+const fmtUSD = n => n >= 0.01 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(4)}` : '$0.00';
+const fmtInt = n => Number(n || 0).toLocaleString('en-US');
+function nextHue() {
+  const used = new Set(state.seats.map(s => s.hue));
+  for (let h = 1; h <= 8; h++) if (!used.has(h)) return h;
+  return ((state.seats.length) % 8) + 1;
+}
+function setStatus(text, live = false) {
+  els.status.textContent = text;
+  els.status.classList.toggle('live', live);
+}
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* Minimal, safe markdown: everything is HTML-escaped first, so model output can never inject markup. */
+function renderMd(src) {
+  const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+  const inline = t => esc(t)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>')
+    .replace(/(^|[^_\w])_([^_\n]+)_(?!\w)/g, '$1<em>$2</em>')
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*$/.test(line)) { i++; continue; }
+    let m;
+    if ((m = line.match(/^\s*```/))) {
+      const buf = []; i++;
+      while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      out.push(`<pre><code>${esc(buf.join('\n'))}</code></pre>`);
+      continue;
+    }
+    if ((m = line.match(/^\s{0,3}(#{1,4})\s+(.*)$/))) { const l = Math.min(m[1].length + 1, 4); out.push(`<h${l}>${inline(m[2].replace(/\s#+\s*$/, ''))}</h${l}>`); i++; continue; }
+    if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) { out.push('<hr>'); i++; continue; }
+    if (/^\s{0,3}>/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s{0,3}>/.test(lines[i])) buf.push(lines[i++].replace(/^\s{0,3}>\s?/, ''));
+      out.push(`<blockquote>${renderMd(buf.join('\n'))}</blockquote>`);
+      continue;
+    }
+    if (/^\s{0,3}([-*+]|\d+[.)])\s+/.test(line)) {
+      const ordered = /^\s{0,3}\d+[.)]\s+/.test(line);
+      const items = [];
+      while (i < lines.length && /^\s{0,3}([-*+]|\d+[.)])\s+/.test(lines[i])) {
+        let item = lines[i++].replace(/^\s{0,3}([-*+]|\d+[.)])\s+/, '');
+        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !/^\s{0,3}([-*+]|\d+[.)])\s+/.test(lines[i])) item += ' ' + lines[i++].trim();
+        items.push(`<li>${inline(item)}</li>`);
+      }
+      out.push(`<${ordered ? 'ol' : 'ul'}>${items.join('')}</${ordered ? 'ol' : 'ul'}>`);
+      continue;
+    }
+    const buf = [];
+    while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^\s{0,3}(#{1,4}\s|```|>|([-*+]|\d+[.)])\s)/.test(lines[i])) buf.push(lines[i++].trim());
+    out.push(`<p>${inline(buf.join(' '))}</p>`);
+  }
+  return out.join('');
+}
+
+/* ---------- the pixel room ---------- */
+/* Every sprite and tile here is drawn from these pixel maps; no image files. Characters are palette-swapped per seat. */
+const Room = (() => {
+  const cv = $('#room');
+  const ctx = cv.getContext('2d');
+  const off = document.createElement('canvas');
+  const octx = off.getContext('2d');
+  const H = 80;
+  let W = 320, scale = 2, dpr = 1;
+  let view = [];          // [{ seat, status }]
+  let agenda = '';
+  let tick = 0, raf = 0, lastT = 0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  const BODY = [
+    '...BBBBBB...',
+    '..BBBBBBBB..',
+    '.SBBBBBBBBS.',
+    '.SBBbBBbBBS.',
+    '..BBBBBBBB..',
+  ];
+  const HEADS = [
+    ['....HHHH....', '...HHHHHH...', '..HHHHHHHH..', '..HSSSSSSH..', '..HSESSESH..', '...SSSSSS...', '...SS__SS...', '....SSSS....'],
+    ['............', '...HHHHHH...', '..HHHHHHHH..', '..HHSSSSSS..', '..SSESSESS..', '...SSSSSS...', '...SS__SS...', '....SSSS....'],
+    ['....HHHH....', '...HHHHHH...', '..HHHHHHHH..', '..HSSSSSSH..', '..HSESSESH..', '..HSSSSSSH..', '.HHSS__SSHH.', '.HH.SSSS.HH.'],
+    ['...CCCCCC...', '..CCCCCCCC..', '.CCCCCCCCCC.', '..HSSSSSSH..', '..HSESSESH..', '...SSSSSS...', '...SS__SS...', '....SSSS....'],
+  ];
+  const HAIR = ['#2B1D14', '#5A3A1E', '#C98A3B', '#1C1C1C', '#8C4A2F', '#D7B47A', '#3A2C5A', '#6B6B6B'];
+  const SKIN = ['#F1C9A5', '#D9A077', '#A86F45', '#7A4B2C', '#E8B890'];
+  const THEME = {
+    light: { wall: '#D9DDD3', wallTop: '#E4E7E0', base: '#B9BFB6', floor: '#CBC4B4', floorAlt: '#C4BDAD', table: '#8A5A3C', tableTop: '#A8714C', tableEdge: '#6E462D', board: '#FAFAF7', boardFrame: '#7A7F78', bubble: '#FFFFFF', bubbleLine: '#16201C', placard: '#F3F1EA', text: '#16201C', boardText: '#2A3430', plant: '#3F7A4A', plantDark: '#2E5C37', pot: '#A2603A', clock: '#F6F6F2', clockLine: '#3A3F3C', shadow: 'rgba(0,0,0,.12)' },
+    dark:  { wall: '#2A312E', wallTop: '#333B37', base: '#1E2522', floor: '#3A3F3B', floorAlt: '#353A36', table: '#6B4530', tableTop: '#8A5A3C', tableEdge: '#4E3222', board: '#E6E7E1', boardFrame: '#55605A', bubble: '#F3F3EE', bubbleLine: '#16201C', placard: '#E9E7E0', text: '#16201C', boardText: '#2A3430', plant: '#4E9A5D', plantDark: '#356B41', pot: '#A2603A', clock: '#E9E9E3', clockLine: '#2E3330', shadow: 'rgba(0,0,0,.28)' },
+  };
+
+  function hex2rgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function shade(h, f) { const [r, g, b] = hex2rgb(h); return `rgb(${Math.round(r * f)},${Math.round(g * f)},${Math.round(b * f)})`; }
+  function grey(h) { const [r, g, b] = hex2rgb(h); const l = Math.round(0.3 * r + 0.59 * g + 0.11 * b); return `rgb(${l},${l},${l})`; }
+
+  function px(x, y, c, w = 1, h = 1) { octx.fillStyle = c; octx.fillRect(x, y, w, h); }
+  function rows(x, y, map, pal) {
+    for (let j = 0; j < map.length; j++) for (let i = 0; i < map[j].length; i++) {
+      const c = pal[map[j][i]]; if (c) px(x + i, y + j, c);
+    }
+  }
+  function charPalette(seat, status) {
+    const body = cssVar(`--seat-${seat.hue}`) || '#777777';
+    const hair = HAIR[(seat.hue * 3) % HAIR.length], skin = SKIN[(seat.hue * 2) % SKIN.length];
+    const pal = { H: hair, S: skin, s: shade(skin, .82), E: '#1E1A17', M: '#5A2A24', B: body, b: shade(body, .75), C: shade(body, .6) };
+    if (status === 'absent') for (const k of Object.keys(pal)) pal[k] = grey(pal[k].startsWith('rgb') ? '#777777' : pal[k]);
+    return pal;
+  }
+  function drawCharacter(x, y, seat, status) {
+    const pal = charPalette(seat, status);
+    const head = HEADS[seat.hue % HEADS.length].slice();
+    const talking = status === 'speaking' && (tick % 4 < 2);
+    const blink = status !== 'absent' && !reduce.matches && (tick % 28 === 0);
+    head[6] = head[6].replace('__', talking ? 'MM' : 'ss');
+    if (blink) head[4] = head[4].replace(/E/g, 's');
+    const bob = (!reduce.matches && (status === 'idle' || status === 'done') && (tick % 16 >= 8)) ? 1 : 0;
+    rows(x, y + bob, head, pal);
+    rows(x, y + 8 + bob, BODY, pal);
+    return bob;
+  }
+  function drawBubble(x, y, T) {
+    px(x, y, T.bubbleLine, 16, 8); px(x + 1, y + 1, T.bubble, 14, 6);
+    px(x + 2, y + 8, T.bubbleLine, 3, 1); px(x + 2, y + 9, T.bubbleLine, 1, 1); px(x + 2, y + 8, T.bubble, 1, 1);
+    const n = reduce.matches ? 3 : (tick % 4);
+    for (let i = 0; i < 3; i++) px(x + 4 + i * 4, y + 3, i < n ? T.bubbleLine : '#C8C8C0', 2, 2);
+  }
+  function drawBadge(x, y, kind) {
+    if (kind === 'done') { px(x, y, '#2E8B57', 5, 5); px(x + 1, y + 2, '#FFFFFF'); px(x + 2, y + 3, '#FFFFFF'); px(x + 3, y + 2, '#FFFFFF'); px(x + 4, y + 1, '#FFFFFF'); }
+    if (kind === 'absent') { px(x, y, '#B23A2C', 5, 5); px(x + 2, y + 1, '#FFFFFF', 1, 2); px(x + 2, y + 4, '#FFFFFF'); }
+  }
+  const CHAR_Y = 35, TABLE_Y = 48;   // head top row; table top row (covers the characters' laps)
+  function layout() {
+    const n = Math.max(view.length, 1);
+    const left = 14, right = W - 14;
+    const span = right - left;
+    const step = Math.min(56, Math.max(16, Math.floor(span / n)));
+    const total = step * n;
+    const start = left + Math.floor((span - total) / 2);
+    return view.map((v, i) => ({ ...v, x: start + i * step + Math.floor(step / 2) - 6, y: CHAR_Y }));
+  }
+  function draw() {
+    const T = THEME[isDark() ? 'dark' : 'light'];
+    if (off.width !== W || off.height !== H) { off.width = W; off.height = H; }
+    octx.imageSmoothingEnabled = false;
+    octx.clearRect(0, 0, W, H);
+    // wall
+    px(0, 0, T.wall, W, 32); px(0, 0, T.wallTop, W, 3); px(0, 30, T.base, W, 2); px(0, 32, shade(T.floor, .8), W, 1);
+    // floor tiles
+    for (let y = 33; y < H; y += 8) for (let x = 0; x < W; x += 8) px(x, y, ((x / 8 + (y - 33) / 8) % 2 === 0) ? T.floor : T.floorAlt, 8, 8);
+    // whiteboard
+    const bw = Math.min(120, W - 70), bx = Math.floor(W / 2 - bw / 2);
+    px(bx - 1, 5, T.boardFrame, bw + 2, 22); px(bx, 6, T.board, bw, 20); px(bx + 2, 24, T.boardFrame, bw - 4, 1);
+    // plant (left) and clock (right)
+    px(6, 20, T.pot, 8, 7); px(7, 19, shade(T.pot, .8), 6, 1); px(7, 13, T.plant, 6, 7); px(5, 15, T.plantDark, 3, 4); px(12, 14, T.plantDark, 3, 5); px(9, 10, T.plant, 2, 4);
+    const cx = W - 14, cy = 14;
+    px(cx - 5, cy - 5, T.clockLine, 10, 10); px(cx - 4, cy - 4, T.clock, 8, 8);
+    px(cx - 1, cy - 3, T.clockLine, 1, 3); px(cx, cy - 1, T.clockLine, (tick >> 3) % 2 ? 2 : 3, 1);
+    // seats
+    const seats = layout();
+    const chairId = chairSeat() && chairSeat().id;
+    for (const s of seats) {
+      // chair back behind the character
+      px(s.x + 1, s.y + 5, shade(T.table, .9), 10, 10); px(s.x + 2, s.y + 6, shade(T.table, 1.1), 8, 2);
+      const bob = drawCharacter(s.x, s.y, s.seat, s.status);
+      if (s.status === 'speaking') drawBubble(s.x + 8, s.y - 11, T);
+      if (s.status === 'done') drawBadge(s.x + 10, s.y + bob, 'done');
+      if (s.status === 'absent') drawBadge(s.x + 10, s.y, 'absent');
+    }
+    // table across the room (drawn after characters so it covers their laps)
+    const tx = 10, tw = W - 20, ty = TABLE_Y;
+    px(tx, ty + 14, T.shadow, tw, 2);
+    px(tx, ty, T.tableTop, tw, 8); px(tx, ty + 8, T.table, tw, 5); px(tx, ty + 13, T.tableEdge, tw, 1);
+    px(tx + 1, ty, shade(T.tableTop, 1.12), tw - 2, 1);
+    // legs
+    px(tx + 4, ty + 14, T.tableEdge, 2, 8); px(tx + tw - 6, ty + 14, T.tableEdge, 2, 8);
+    // hands, papers and placards on the table
+    for (const s of seats) {
+      const pal = charPalette(s.seat, s.status);
+      if (s.status === 'writing') {
+        px(s.x + 1, ty + 2, '#F4F4EE', 10, 5); px(s.x + 2, ty + 3, '#8A8F8A', 6, 1); px(s.x + 2, ty + 5, '#8A8F8A', 7, 1);
+        const t = !reduce.matches && (tick % 2 === 0);
+        px(s.x + 2, ty + (t ? 1 : 2), pal.S, 2, 1); px(s.x + 8, ty + (t ? 2 : 1), pal.S, 2, 1);
+      } else {
+        px(s.x + 2, ty + 1, pal.S, 2, 1); px(s.x + 8, ty + 1, pal.S, 2, 1);
+      }
+      px(s.x, ty + 9, T.placard, 12, 4);
+      if (s.seat.id === chairId) px(s.x, ty + 12, cssVar('--brass') || '#9C7527', 12, 1);
+    }
+
+    // composite to the display canvas, then crisp text on top
+    const cw = Math.round(W * scale * dpr), ch = Math.round(H * scale * dpr);
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; cv.style.width = `${W * scale}px`; cv.style.height = `${H * scale}px`; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = T.text;
+    ctx.font = `500 ${Math.max(7, 3.2 * scale)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+    for (const s of seats) {
+      const label = s.seat.name.length > 8 ? s.seat.name.slice(0, 7) + '…' : s.seat.name;
+      ctx.fillText(label, (s.x + 6) * scale, (ty + 10.8) * scale, 12 * scale);
+    }
+    // whiteboard text
+    ctx.textAlign = 'left'; ctx.fillStyle = T.boardText;
+    ctx.font = `600 ${Math.max(7, 3 * scale)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+    ctx.fillText('AGENDA', (bx + 3) * scale, 10 * scale);
+    ctx.font = `${Math.max(8, 3.6 * scale)}px "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif`;
+    const maxW = (bw - 6) * scale;
+    const words = (agenda || 'Waiting for a question').split(/\s+/);
+    const lines = []; let cur = '';
+    for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; if (lines.length === 2) break; }
+    if (lines.length < 2 && cur) lines.push(cur);
+    if (lines.length === 2 && words.join(' ').length > lines.join(' ').length) lines[1] = lines[1].replace(/\s*\S*$/, '') + '…';
+    lines.forEach((l, i) => ctx.fillText(l, (bx + 3) * scale, (15.5 + i * 4.6) * scale, maxW));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  function resize() {
+    const cssW = Math.max(200, Math.floor(cv.parentElement.clientWidth));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    scale = cssW >= 700 ? 3 : 2;
+    W = Math.ceil(cssW / scale);   // a pixel or two wider than the box; the box clips it
+    draw();
+  }
+  function frame(t) {
+    raf = 0;
+    if (t - lastT >= 125) { lastT = t; tick++; draw(); }
+    if (!reduce.matches) raf = requestAnimationFrame(frame);
+  }
+  function start() { if (!raf && !reduce.matches) raf = requestAnimationFrame(frame); }
+  new ResizeObserver(resize).observe(cv.parentElement);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  reduce.addEventListener('change', () => { if (reduce.matches && raf) { cancelAnimationFrame(raf); raf = 0; } draw(); start(); });
+
+  return {
+    setSeats(list) { view = list.map(seat => ({ seat, status: 'idle' })); draw(); },
+    status(id, status) { const v = view.find(x => x.seat.id === id); if (v) v.status = status; draw(); },
+    all(status) { for (const v of view) v.status = status; draw(); },
+    setAgenda(t) { agenda = String(t || '').trim(); draw(); },
+    start, resize,
+  };
+})();
+
+/* ---------- seats & settings UI ---------- */
+function renderSeats() {
+  els.seats.innerHTML = '';
+  const chair = chairSeat();
+  for (const s of state.seats) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seat' + (s.on ? ' on' : '') + (state.missing.has(s.id) ? ' warn' : '');
+    b.style.setProperty('--seat', `var(--seat-${s.hue})`);
+    b.setAttribute('aria-pressed', s.on ? 'true' : 'false');
+    b.title = state.missing.has(s.id) ? `${s.id} is not in OpenRouter's catalog right now` : (s.on ? `${s.name} is attending (${s.id}). Click to excuse.` : `${s.name} is excused. Click to seat.`);
+    b.innerHTML = `<span class="dot">${esc(initial(s.name))}</span>${esc(s.name)}${chair && chair.id === s.id && s.on ? '<span class="chair-badge">Chair</span>' : ''}`;
+    b.addEventListener('click', () => { if (state.running) return; s.on = !s.on; save(); renderSeats(); renderMeta(); });
+    els.seats.appendChild(b);
+  }
+  const add = document.createElement('button');
+  add.type = 'button'; add.className = 'seat add'; add.textContent = '+ Add seat';
+  add.addEventListener('click', () => { if (!state.running) openPicker(); });
+  els.seats.appendChild(add);
+  if (!state.running) Room.setSeats(seatingOrder());
+}
+function seatingOrder() {
+  const chair = chairSeat();
+  return chair ? [...attending().filter(s => s !== chair), chair] : attending();
+}
+function renderMeta() {
+  const n = attending().length;
+  const chair = chairSeat();
+  const passTxt = state.passes === 1 ? '1 pass' : `${state.passes} passes`;
+  els.meta.innerHTML = `${n} attending · ${passTxt} around the table · Chair: ${chair ? esc(chair.name) : '—'} · ${state.length[0].toUpperCase() + state.length.slice(1)} turns · <button type="button" id="metaSettings">change</button>`;
+  $('#metaSettings').addEventListener('click', () => openSettings());
+}
+function renderRoster() {
+  els.roster.innerHTML = '';
+  for (const s of state.seats) {
+    const row = document.createElement('div');
+    row.className = 'roster-row';
+    row.style.setProperty('--seat', `var(--seat-${s.hue})`);
+    row.innerHTML = `
+      <span class="dot">${esc(initial(s.name))}</span>
+      <div class="names">
+        <input type="text" value="${esc(s.name)}" aria-label="Display name for ${esc(s.id)}" maxlength="40">
+        <span class="model-id">${esc(s.id)}${state.missing.has(s.id) ? ' <span class="warn-txt">· not in catalog</span>' : ''}</span>
+      </div>
+      <button class="btn ghost small" type="button" aria-label="Remove ${esc(s.name)}">Remove</button>`;
+    row.querySelector('input').addEventListener('change', e => { s.name = e.target.value.trim() || s.id.split('/').pop(); row.querySelector('.dot').textContent = initial(s.name); renderChairSel(); });
+    row.querySelector('button').addEventListener('click', () => { state.seats = state.seats.filter(x => x !== s); renderRoster(); renderChairSel(); });
+    els.roster.appendChild(row);
+  }
+  if (!state.seats.length) els.roster.innerHTML = '<p class="hint">No attendees yet. Add at least two.</p>';
+}
+function renderChairSel() {
+  els.chairSel.innerHTML = '';
+  for (const s of state.seats) {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = `${s.name} · ${s.id}`;
+    if (s.id === state.chair) o.selected = true;
+    els.chairSel.appendChild(o);
+  }
+  if (!state.seats.some(s => s.id === state.chair) && state.seats.length) els.chairSel.value = state.seats[state.seats.length - 1].id;
+}
+function openSettings(focus) {
+  els.apiKey.value = state.key;
+  renderRoster(); renderChairSel();
+  for (const r of document.querySelectorAll('input[name=passes]')) r.checked = Number(r.value) === state.passes;
+  for (const r of document.querySelectorAll('input[name=length]')) r.checked = r.value === state.length;
+  els.settings.showModal();
+  if (focus === 'key') els.apiKey.focus();
+}
+function saveSettings() {
+  state.key = els.apiKey.value.trim();
+  state.chair = els.chairSel.value || state.chair;
+  const p = document.querySelector('input[name=passes]:checked'); if (p) state.passes = Number(p.value);
+  const l = document.querySelector('input[name=length]:checked'); if (l) state.length = l.value;
+  save();
+  els.settings.close();
+  renderSeats(); renderMeta();
+  setStatus(state.key ? 'Ready to convene' : 'Add your OpenRouter key in Settings');
+}
+
+/* ---------- model catalog & picker ---------- */
+async function loadCatalog() {
+  if (state.catalog) return state.catalog;
+  const res = await fetch(`${OR}/models`);
+  if (!res.ok) throw new Error(`OpenRouter answered ${res.status}`);
+  const j = await res.json();
+  const list = (j.data || []).filter(m => m && m.id && !m.id.endsWith(':batch'));
+  list.sort((a, b) => (b.created || 0) - (a.created || 0));
+  state.catalog = list;
+  const ids = new Set(list.map(m => m.id));
+  state.missing = new Set(state.seats.filter(s => !ids.has(s.id)).map(s => s.id));
+  return list;
+}
+function shortName(m) {
+  const n = String(m.name || m.id);
+  return n.includes(':') ? n.split(':').slice(1).join(':').trim() : n;
+}
+function perM(x) { const n = Number(x); return isFinite(n) ? `$${(n * 1e6).toFixed(n * 1e6 < 1 ? 2 : 0)}` : '—'; }
+function renderModelList() {
+  const q = els.modelSearch.value.trim().toLowerCase();
+  const list = (state.catalog || []).filter(m => !q || m.id.toLowerCase().includes(q) || String(m.name || '').toLowerCase().includes(q)).slice(0, 80);
+  if (state.catalogError) { els.modelList.innerHTML = `<div class="empty">Couldn't load the catalog (${esc(state.catalogError)}). Add a model by id below.</div>`; return; }
+  if (!state.catalog) { els.modelList.innerHTML = '<div class="empty">Loading the catalog…</div>'; return; }
+  if (!list.length) { els.modelList.innerHTML = '<div class="empty">Nothing matches. Try another word or add by id.</div>'; return; }
+  els.modelList.innerHTML = '';
+  for (const m of list) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'model-row';
+    const p = m.pricing || {};
+    b.innerHTML = `<span><span class="nm">${esc(shortName(m))}</span><span class="model-id">${esc(m.id)}</span></span><span class="price">${perM(p.prompt)} in · ${perM(p.completion)} out /M</span>`;
+    b.addEventListener('click', () => addSeat(m.id, shortName(m)));
+    els.modelList.appendChild(b);
+  }
+}
+function addSeat(id, name) {
+  id = id.trim(); if (!id) return;
+  if (state.seats.some(s => s.id === id)) { els.picker.close(); return; }
+  let nm = (name || id.split('/').pop()).trim();
+  if (state.seats.some(s => s.name.toLowerCase() === nm.toLowerCase())) nm = `${nm} (${id.split('/')[0]})`;
+  state.seats.push({ id, name: nm, hue: nextHue(), on: true });
+  save();
+  els.picker.close();
+  renderSeats(); renderMeta();
+  if (els.settings.open) { renderRoster(); renderChairSel(); }
+}
+function openPicker() {
+  els.modelSearch.value = ''; els.manualId.value = '';
+  state.catalogError = null;
+  els.picker.showModal();
+  renderModelList();
+  loadCatalog().then(renderModelList).catch(e => { state.catalogError = e.message; renderModelList(); });
+  setTimeout(() => els.modelSearch.focus(), 50);
+}
+
+/* ---------- OpenRouter streaming ---------- */
+async function stream(model, messages, maxTokens, onText, signal) {
+  const res = await fetch(`${OR}/chat/completions`, {
+    method: 'POST', signal,
+    headers: { 'Authorization': `Bearer ${state.key}`, 'Content-Type': 'application/json', 'X-Title': 'Quorum' },
+    body: JSON.stringify({ model, messages, stream: true, max_tokens: maxTokens, usage: { include: true } }),
+  });
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`.trim();
+    try { const j = await res.json(); msg = (j.error && j.error.message) || msg; } catch (e) { /* keep status */ }
+    throw new Error(msg);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', text = '', usage = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line || line.startsWith(':') || !line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') continue;
+      let j; try { j = JSON.parse(data); } catch (e) { continue; }
+      if (j.error) throw new Error(j.error.message || 'The model returned an error');
+      const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+      if (delta) { text += delta; onText(text); }
+      if (j.usage) usage = j.usage;
+    }
+  }
+  return { text, usage };
+}
+
+/* ---------- prompts ---------- */
+function fmtTranscript(t) {
+  let out = '', pass = 0;
+  for (const e of t) {
+    if (e.pass !== pass) { pass = e.pass; out += `\n— Pass ${pass} —\n\n`; }
+    out += `${e.name}: ${e.text}\n\n`;
+  }
+  return out.trim();
+}
+function participantMessages(seat, pass, order, chair, transcript, question) {
+  const L = LENGTHS[state.length];
+  const names = order.map(s => s.name).join(', ');
+  const job = pass === 1
+    ? "Give your opening position: the best answer you can, with your reasoning and the facts it rests on. If colleagues have already spoken in this pass, engage with them directly: say where you agree, where you disagree and why, and correct anything you believe is wrong. Don't repeat points already made; add what is missing."
+    : "Respond to the discussion so far. If a colleague made a better case, say so and update your position. Where you still disagree, say exactly what you disagree with and why. Name anything that is still unresolved.";
+  const system = `You are ${seat.name} (model: ${seat.id}), one of ${order.length} AI models seated at a roundtable convened to answer a question for a user. Attendees in speaking order: ${names}. ${chair.name} chairs the meeting and will write the final answer once the discussion ends. The meeting runs ${state.passes} pass${state.passes === 1 ? '' : 'es'} around the table; this is pass ${pass}.
+
+How to use this turn: ${job}
+
+Rules:
+- Address colleagues by name. Speak in the first person as ${seat.name}; never write lines for anyone else.
+- Be concrete and specific. Prefer facts, examples and trade-offs to generalities.
+- Keep it under about ${L.words} words. Don't restate the question and don't summarise the whole meeting; the chair will do that.
+- Plain prose or light markdown. No preamble.`;
+  const user = `The user's question:
+"""
+${question}
+"""
+
+${transcript.length ? `Transcript so far:\n\n${fmtTranscript(transcript)}` : 'No one has spoken yet; you open the meeting.'}
+
+It is your turn, ${seat.name}.`;
+  return [{ role: 'system', content: system }, { role: 'user', content: user }];
+}
+function chairMessages(chair, order, transcript, question) {
+  const L = LENGTHS[state.length];
+  const names = order.map(s => s.name).join(', ');
+  const system = `You are ${chair.name} (model: ${chair.id}), chair of a roundtable of AI models (${names}). The discussion has concluded. Write the final answer to the user's question.
+
+- Draw on the strongest points made by any attendee and on your own judgment; you are not bound to a majority.
+- Write for the user, not for the room: don't narrate the meeting, and don't attribute points to attendees in the main answer.
+- Where the room converged, answer with confidence. Where real disagreement remains, end with a short section headed exactly "Dissent" that says, in one to three sentences, who disagreed and about what. Leave that section out if there was no meaningful disagreement.
+- Use markdown headings or lists only if the answer needs structure. Length: whatever the answer needs, typically ${Math.round(L.words * 0.8)}–${L.words * 2} words.`;
+  const user = `The user's question:
+"""
+${question}
+"""
+
+Full transcript:
+
+${fmtTranscript(transcript)}
+
+Write the resolution.`;
+  return [{ role: 'system', content: system }, { role: 'user', content: user }];
+}
+
+/* ---------- minutes rendering ---------- */
+function addAgendaItem(question) {
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.innerHTML = `<span class="eyebrow">Item</span><h2></h2>`;
+  el.querySelector('h2').textContent = question;
+  els.minutes.appendChild(el);
+}
+function addPassHead(pass) {
+  const label = pass === 1 ? 'Opening positions' : pass === 2 ? 'Responses' : `Responses, round ${pass - 1}`;
+  const el = document.createElement('div');
+  el.className = 'pass-head';
+  el.textContent = `Pass ${pass} · ${label}`;
+  els.minutes.appendChild(el);
+}
+function addTurn(seat, stateTxt) {
+  const el = document.createElement('article');
+  el.className = 'turn';
+  el.style.setProperty('--seat', `var(--seat-${seat.hue})`);
+  el.innerHTML = `
+    <div class="seat-mark" aria-hidden="true">${esc(initial(seat.name))}</div>
+    <div class="turn-body">
+      <header class="turn-head"><span class="speaker">${esc(seat.name)}</span><span class="model-id">${esc(seat.id)}</span><span class="turn-state ${esc(stateTxt)}">${esc(stateTxt)}</span></header>
+      <div class="turn-text md${stateTxt === 'speaking' ? ' streaming' : ''}"></div>
+    </div>`;
+  els.minutes.appendChild(el);
+  return { el, text: el.querySelector('.turn-text'), state: el.querySelector('.turn-state') };
+}
+function setTurnState(t, s, msg) {
+  t.state.textContent = s; t.state.className = `turn-state ${s}`;
+  t.text.classList.remove('streaming');
+  if (msg) t.text.innerHTML = `<p class="err">${esc(msg)}</p>`;
+}
+function addResolution(chair) {
+  const el = document.createElement('article');
+  el.className = 'resolution';
+  el.style.setProperty('--seat', `var(--seat-${chair.hue})`);
+  el.innerHTML = `
+    <header class="resolution-head">
+      <span class="eyebrow">Resolution</span>
+      <span class="row"><span class="by">Chair · ${esc(chair.name)} · <span class="model-id">${esc(chair.id)}</span></span><button class="btn ghost small" type="button">Copy</button></span>
+    </header>
+    <div class="md turn-text streaming"></div>`;
+  els.minutes.appendChild(el);
+  const text = el.querySelector('.md');
+  const btn = el.querySelector('button');
+  btn.addEventListener('click', async () => {
+    const raw = text.dataset.raw || text.textContent;
+    try { await navigator.clipboard.writeText(raw); btn.textContent = 'Copied'; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents(text); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); btn.textContent = 'Selected — press copy'; }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+  });
+  return { el, text };
+}
+function addAdjourn(txt) {
+  const p = document.createElement('p');
+  p.className = 'adjourn'; p.textContent = txt;
+  els.minutes.appendChild(p);
+}
+function throttled(fn) {
+  let pending = null, raf = 0;
+  return v => { pending = v; if (!raf) raf = requestAnimationFrame(() => { raf = 0; fn(pending); }); };
+}
+function scrollIntoViewIfBelow(el) {
+  const r = el.getBoundingClientRect();
+  if (r.bottom > innerHeight - 24) el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+
+/* ---------- the meeting ---------- */
+async function convene() {
+  const question = els.question.value.trim();
+  if (!question) { els.question.focus(); return; }
+  if (!state.key) { setStatus('Add your OpenRouter key to convene'); openSettings('key'); return; }
+  const order0 = attending();
+  if (order0.length < 2) { setStatus('Seat at least two attendees'); return; }
+  const chair = chairSeat();
+  const order = [...order0.filter(s => s !== chair), chair];
+
+  state.running = true;
+  state.abort = new AbortController();
+  const signal = state.abort.signal;
+  els.convene.disabled = true; els.stop.hidden = false; els.question.readOnly = true;
+  renderSeats();
+  Room.setSeats(order); Room.setAgenda(question); Room.start();
+  els.minutes.innerHTML = '';
+  addAgendaItem(question);
+
+  const transcript = [];
+  let tokens = 0, cost = 0, turns = 0, aborted = false;
+  const L = LENGTHS[state.length];
+  const tally = u => { if (!u) return; tokens += Number(u.total_tokens || 0); cost += Number(u.cost || 0); };
+
+  try {
+    for (let pass = 1; pass <= state.passes && !aborted; pass++) {
+      addPassHead(pass);
+      if (pass > 1) Room.all('idle');
+      for (const seat of order) {
+        if (aborted) break;
+        setStatus(`Pass ${pass} · ${seat.name} is speaking…`, true);
+        Room.status(seat.id, 'speaking');
+        const t = addTurn(seat, 'speaking');
+        scrollIntoViewIfBelow(t.el);
+        const paint = throttled(txt => { t.text.innerHTML = renderMd(txt); scrollIntoViewIfBelow(t.el); });
+        try {
+          const { text, usage } = await stream(seat.id, participantMessages(seat, pass, order, chair, transcript, question), L.tokens, paint, signal);
+          t.text.innerHTML = renderMd(text || '(said nothing)');
+          transcript.push({ name: seat.name, pass, text: text || '(said nothing)' });
+          setTurnState(t, 'yielded');
+          Room.status(seat.id, 'done');
+          tally(usage); turns++;
+        } catch (e) {
+          if (signal.aborted) { aborted = true; setTurnState(t, 'interrupted'); Room.status(seat.id, 'idle'); break; }
+          setTurnState(t, 'absent', `${seat.name} did not respond: ${e.message}`);
+          Room.status(seat.id, 'absent');
+          transcript.push({ name: seat.name, pass, text: `(did not respond this pass)` });
+        }
+      }
+    }
+    if (!aborted) {
+      setStatus(`${chair.name} is writing the resolution…`, true);
+      Room.status(chair.id, 'writing');
+      const r = addResolution(chair);
+      scrollIntoViewIfBelow(r.el);
+      const paint = throttled(txt => { r.text.innerHTML = renderMd(txt); scrollIntoViewIfBelow(r.el); });
+      try {
+        const { text, usage } = await stream(chair.id, chairMessages(chair, order, transcript, question), Math.max(L.tokens * 2, 1500), paint, signal);
+        r.text.innerHTML = renderMd(text || '(no resolution)');
+        r.text.dataset.raw = text;
+        r.text.classList.remove('streaming');
+        Room.status(chair.id, 'done');
+        tally(usage); turns++;
+      } catch (e) {
+        r.text.classList.remove('streaming');
+        if (signal.aborted) { aborted = true; r.text.innerHTML = '<p class="err">Interrupted before the resolution was written.</p>'; Room.status(chair.id, 'idle'); }
+        else { r.text.innerHTML = `<p class="err">The chair could not write the resolution: ${esc(e.message)}</p>`; Room.status(chair.id, 'absent'); }
+      }
+    }
+  } finally {
+    state.running = false; state.abort = null;
+    els.convene.disabled = false; els.stop.hidden = true; els.question.readOnly = false;
+    const costTxt = cost > 0 ? ` · ≈ ${fmtUSD(cost)}` : '';
+    const line = `${aborted ? 'Adjourned early' : 'Adjourned'} · ${turns} turn${turns === 1 ? '' : 's'} · ${fmtInt(tokens)} tokens${costTxt}`;
+    addAdjourn(line);
+    setStatus(line);
+  }
+}
+
+/* ---------- sample minutes (shown until the first live session) ---------- */
+function renderSample() {
+  els.minutes.innerHTML = '';
+  const note = document.createElement('div');
+  note.className = 'sample-note';
+  note.innerHTML = '<strong>Sample minutes.</strong> Illustrative only, written by hand to show the format. Add your OpenRouter key in Settings, type a question above, and convene for a live session.';
+  els.minutes.appendChild(note);
+  const seats = Object.fromEntries(DEFAULT_SEATS.map(s => [s.name, s]));
+  addAgendaItem('Is a hot dog a sandwich?');
+  const turns = [
+    [1, 'GPT', "Opening position: yes, on the definitional test. A sandwich is a filling held in bread so it can be eaten by hand, and a hot dog clears that bar without strain. The only serious counter is cultural usage, and usage is not a definition."],
+    [1, 'Gemini', "I'll push back on GPT. Definitions drift with usage; that is how dictionaries get written. Nobody orders \"a hot dog sandwich\", delis list them separately, and the bun is a single hinged roll rather than two slices. On the classification people actually use, it's its own category."],
+    [1, 'Grok', "Gemini's hinge point proves too much: a sub on a hinged roll is still a sandwich to everyone. I'm with GPT on structure, but I'd add that the question has a tax precedent. New York taxes hot dogs under the same prepared-food rule as sandwiches, which is the closest thing to an official ruling."],
+    [1, 'Claude', "Three of us are answering different questions. Structurally it's a sandwich (GPT, Grok); culturally it isn't (Gemini). I'd resolve by saying which frame the user cares about, and default to the cultural one, since that's how the word is actually used at lunch."],
+    [2, 'GPT', "Claude's split is fair and I'll accept it. I'll hold that on the structural frame the answer is a clean yes, and note that the cultural frame can't be settled by argument, only by survey."],
+    [2, 'Gemini', "Agreed on the split. Grok's tax point shows regulators treat them alike, which supports the structural yes without changing ordinary usage. I still disagree with making the structural frame the default answer."],
+    [2, 'Grok', "Happy to concede the default to culture as long as the resolution says plainly that the structural answer is yes. The dissent is about which frame leads, not about the facts."],
+    [2, 'Claude', "Then we have agreement on the facts and a narrow disagreement on emphasis. I'll write it up that way."],
+  ];
+  let pass = 0;
+  for (const [p, name, text] of turns) {
+    if (p !== pass) { pass = p; addPassHead(p); }
+    const t = addTurn(seats[name], 'yielded');
+    t.text.innerHTML = renderMd(text);
+  }
+  const r = addResolution(seats.Claude);
+  const res = `Structurally, yes: a hot dog is a filling served in bread and eaten by hand, and regulators that have had to decide treat it as one. In everyday usage, no: people, menus and delis treat hot dogs as their own category, and ordinary language is what the word "sandwich" is for. So the honest answer is that a hot dog is a sandwich by construction and not one by convention, and in conversation the convention wins.
+
+**Dissent.** GPT and Grok would lead with the structural "yes"; Gemini would lead with usage. The room agreed on the facts and differed only on which frame to put first.`;
+  r.text.innerHTML = renderMd(res); r.text.dataset.raw = res; r.text.classList.remove('streaming');
+  addAdjourn('Sample · 9 turns · not a live session');
+}
+
+/* ---------- wiring ---------- */
+load();
+renderSeats(); renderMeta(); renderSample();
+Room.resize(); Room.start();
+setStatus(state.key ? 'Ready to convene' : 'Add your OpenRouter key in Settings');
+
+els.convene.addEventListener('click', convene);
+els.stop.addEventListener('click', () => { if (state.abort) state.abort.abort(); });
+els.question.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !state.running) convene(); });
+els.question.addEventListener('input', () => { if (!state.running) Room.setAgenda(els.question.value); });
+$('#btnSettings').addEventListener('click', () => openSettings());
+els.saveSettings.addEventListener('click', saveSettings);
+els.showKey.addEventListener('click', () => { const show = els.apiKey.type === 'password'; els.apiKey.type = show ? 'text' : 'password'; els.showKey.textContent = show ? 'Hide' : 'Show'; });
+els.addModel.addEventListener('click', openPicker);
+els.modelSearch.addEventListener('input', renderModelList);
+els.addManual.addEventListener('click', () => addSeat(els.manualId.value));
+els.manualId.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSeat(els.manualId.value); } });
+for (const d of [els.settings, els.picker]) {
+  d.querySelector('[data-close]').addEventListener('click', () => d.close());
+  d.addEventListener('click', e => { if (e.target === d) d.close(); });
+}
+els.settings.addEventListener('close', () => { renderSeats(); renderMeta(); });
+
+// Quietly check the seats against the live catalog so a retired model id is flagged before a session, not during one.
+loadCatalog().then(() => { renderSeats(); }).catch(() => { /* offline or blocked: the picker will say so when opened */ });
+})();
+</script>
+</body>
+</html>
