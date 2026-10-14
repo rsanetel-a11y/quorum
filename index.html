@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://js.puter.com/v2/"></script>
 <style>
 /* Layout: one reading column, like the minutes of a meeting. Agenda on top, the pixel room beneath it, each turn in a seat-marked row, the chair's resolution at the foot. */
 :root {
@@ -265,9 +266,10 @@ dialog::backdrop { background: rgba(8, 12, 10, .5); }
   <section class="minutes" id="minutes"></section>
 </main>
 
+
 <footer class="wrap colophon">
-  <p>Quorum runs entirely in this browser tab. Your question and the transcript go only to OpenRouter, which routes each turn to the model that owns it. Your key stays in this browser.</p>
-  <p>Open source under the MIT license. Bring your own OpenRouter key; nothing is hosted or logged by Quorum itself.</p>
+  <p>Quorum runs entirely in this browser tab. Each turn goes straight to the service that runs that model: Puter for the frontier seats, or Google, Groq, Mistral or your own endpoint if you add those. Nothing passes through a server of Quorum's own.</p>
+  <p>Open source under the MIT license. No API keys needed for the default seats; sign in to Puter once and its free monthly allowance covers your sessions.</p>
 </footer>
 
 <dialog id="settings" aria-labelledby="settingsTitle">
@@ -277,19 +279,29 @@ dialog::backdrop { background: rgba(8, 12, 10, .5); }
   </div>
   <div class="dlg-body">
     <div class="field">
-      <label for="apiKey">OpenRouter API key</label>
+      <span class="label">Puter account</span>
       <div class="row">
-        <input class="grow" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-or-v1-…">
-        <button class="btn small" type="button" id="btnShowKey">Show</button>
+        <span id="puterStatus" class="hint grow">Checking…</span>
+        <button class="btn small" type="button" id="btnPuterSignIn">Sign in</button>
+        <button class="btn ghost small" type="button" id="btnPuterSignOut" hidden>Sign out</button>
       </div>
-      <p class="hint">One key covers every model. Create one at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a> and add a few dollars of credit. Saved in this browser only.</p>
+      <p class="hint">Claude, GPT, Gemini and Grok run through <a href="https://puter.com" target="_blank" rel="noopener">Puter</a>. Every Puter account gets a free monthly allowance; sessions draw on yours, and nothing is billed to this site.</p>
+    </div>
+
+    <div class="field">
+      <span class="label">Free-tier keys (optional)</span>
+      <p class="hint">Only needed for seats you add from these services. Each has a free tier with no card required.</p>
+      <div class="row"><label class="hint" for="keyGoogle" style="flex:0 0 110px">Google Gemini</label><input class="grow" id="keyGoogle" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><a class="hint" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get key</a></div>
+      <div class="row"><label class="hint" for="keyGroq" style="flex:0 0 110px">Groq</label><input class="grow" id="keyGroq" type="password" autocomplete="off" spellcheck="false" placeholder="gsk_…"><a class="hint" href="https://console.groq.com/keys" target="_blank" rel="noopener">get key</a></div>
+      <div class="row"><label class="hint" for="keyMistral" style="flex:0 0 110px">Mistral</label><input class="grow" id="keyMistral" type="password" autocomplete="off" spellcheck="false" placeholder="key"><a class="hint" href="https://console.mistral.ai/api-keys" target="_blank" rel="noopener">get key</a></div>
+      <div class="row"><label class="hint" for="customBase" style="flex:0 0 110px">Custom endpoint</label><input class="grow" id="customBase" type="text" autocomplete="off" spellcheck="false" placeholder="https://host/v1 (OpenAI-compatible)"><input id="customKey" type="password" autocomplete="off" spellcheck="false" placeholder="key, if any" style="flex:0 1 140px"></div>
     </div>
 
     <div class="field">
       <span class="label">Attendees</span>
       <div class="roster" id="roster"></div>
       <div class="row">
-        <button class="btn small" type="button" id="btnAddModel">Add a model…</button>
+        <button class="btn small" type="button" id="btnAddModel">Add a seat…</button>
         <p class="hint">Click a name to rename it; that is how the others will address it.</p>
       </div>
     </div>
@@ -325,19 +337,24 @@ dialog::backdrop { background: rgba(8, 12, 10, .5); }
 
 <dialog id="picker" aria-labelledby="pickerTitle">
   <div class="dlg-head">
-    <h2 id="pickerTitle">Add a model</h2>
+    <h2 id="pickerTitle">Add a seat</h2>
     <button class="btn ghost small" type="button" data-close>Close</button>
   </div>
   <div class="dlg-body">
     <div class="field">
-      <label for="modelSearch">Search OpenRouter's catalog</label>
-      <input id="modelSearch" type="search" placeholder="claude, gpt, gemini, grok, deepseek, llama…" autocomplete="off">
+      <label for="providerSel">Runs on</label>
+      <select id="providerSel"></select>
+      <p class="hint" id="providerHint"></p>
     </div>
-    <div class="model-list" id="modelList"><div class="empty">Loading the catalog…</div></div>
+    <div class="field" id="searchField">
+      <label for="modelSearch">Search models</label>
+      <input id="modelSearch" type="search" placeholder="claude, gpt, gemini, grok, deepseek, qwen…" autocomplete="off">
+    </div>
+    <div class="model-list" id="modelList"><div class="empty">Loading…</div></div>
     <div class="field">
       <label for="manualId">Or add by model id</label>
       <div class="row">
-        <input class="grow" id="manualId" type="text" placeholder="provider/model-name" autocomplete="off" spellcheck="false">
+        <input class="grow" id="manualId" type="text" placeholder="model id" autocomplete="off" spellcheck="false">
         <button class="btn small" type="button" id="btnAddManual">Add</button>
       </div>
     </div>
@@ -348,15 +365,36 @@ dialog::backdrop { background: rgba(8, 12, 10, .5); }
 (() => {
 'use strict';
 
-const OR = 'https://openrouter.ai/api/v1';
-const STORE = 'quorum.v1';
+const STORE = 'quorum.v2';
+
+/* Where a seat can run. Puter needs no key; the others have free tiers and take a key in Settings. */
+const PROVIDERS = {
+  puter:   { label: 'Puter (no key)', kind: 'puter',
+             hint: 'Frontier models from Anthropic, OpenAI, Google, xAI, DeepSeek and more. No key: each person signs in to Puter once and its free monthly allowance covers their sessions.' },
+  google:  { label: 'Google Gemini (free key)', kind: 'google', keyField: 'google', keyUrl: 'https://aistudio.google.com/apikey',
+             hint: 'Google\'s own API. The free tier needs no card; Google may use free-tier traffic to improve its models.',
+             models: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'] },
+  groq:    { label: 'Groq (free key)', kind: 'openai', base: 'https://api.groq.com/openai/v1', keyField: 'groq', keyUrl: 'https://console.groq.com/keys',
+             hint: 'Open-weight models at high speed. Free tier: about 1,000 requests a day, no card.',
+             models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'] },
+  mistral: { label: 'Mistral (free key)', kind: 'openai', base: 'https://api.mistral.ai/v1', keyField: 'mistral', keyUrl: 'https://console.mistral.ai/api-keys',
+             hint: 'Mistral\'s own API. Free mode needs no card; limits are per account.',
+             models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'] },
+  ollama:  { label: 'Ollama (local, free)', kind: 'openai', base: 'http://localhost:11434/v1',
+             hint: 'Models running on your own computer. Start Ollama with OLLAMA_ORIGINS set to this site\'s address so the browser may reach it.',
+             models: ['gpt-oss:20b', 'llama3.3', 'qwen3', 'deepseek-r1', 'gemma3'] },
+  custom:  { label: 'Custom endpoint', kind: 'openai', keyField: 'custom',
+             hint: 'Any OpenAI-compatible /chat/completions endpoint. Set the base URL and key in Settings.',
+             models: [] },
+};
 
 const DEFAULT_SEATS = [
-  { id: 'anthropic/claude-sonnet-5.5', name: 'Claude', hue: 1, on: true },
-  { id: 'openai/gpt-6.1-sol',          name: 'GPT',    hue: 2, on: true },
-  { id: 'google/gemini-4-argon',       name: 'Gemini', hue: 3, on: true },
-  { id: 'x-ai/grok-4.7',               name: 'Grok',   hue: 4, on: true },
-];
+  { provider: 'puter', model: 'anthropic/claude-sonnet-5-5', name: 'Claude', hue: 1, on: true },
+  { provider: 'puter', model: 'openai/gpt-6.1-sol',          name: 'GPT',    hue: 2, on: true },
+  { provider: 'puter', model: 'google/gemini-4-argon',       name: 'Gemini', hue: 3, on: true },
+  { provider: 'puter', model: 'x-ai/grok-4.7',               name: 'Grok',   hue: 4, on: true },
+].map(s => ({ ...s, id: `${s.provider}:${s.model}` }));
+
 const LENGTHS = {
   brief:    { words: 120, tokens: 500  },
   standard: { words: 220, tokens: 900  },
@@ -364,24 +402,29 @@ const LENGTHS = {
 };
 
 const state = {
-  key: '',
+  keys: { google: '', groq: '', mistral: '', custom: '' },
+  customBase: '',
   seats: DEFAULT_SEATS.map(s => ({ ...s })),
-  chair: 'anthropic/claude-sonnet-5.5',
+  chair: DEFAULT_SEATS[0].id,
   passes: 2,
   length: 'standard',
   running: false,
   abort: null,
-  catalog: null,       // live model list from OpenRouter, or null
-  catalogError: null,
-  missing: new Set(),  // seat ids not found in the catalog
+  puterCatalog: null,   // model ids Puter serves, or null
+  puterCatalogError: null,
+  missing: new Set(),   // seat ids whose model is not in Puter's catalog
+  pickerProvider: 'puter',
 };
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const els = {
   status: $('#status'), question: $('#question'), seats: $('#seats'), meta: $('#agendaMeta'),
   convene: $('#btnConvene'), stop: $('#btnStop'), minutes: $('#minutes'),
-  settings: $('#settings'), picker: $('#picker'), apiKey: $('#apiKey'), showKey: $('#btnShowKey'),
+  settings: $('#settings'), picker: $('#picker'),
+  puterStatus: $('#puterStatus'), puterIn: $('#btnPuterSignIn'), puterOut: $('#btnPuterSignOut'),
+  keyGoogle: $('#keyGoogle'), keyGroq: $('#keyGroq'), keyMistral: $('#keyMistral'), customBase: $('#customBase'), customKey: $('#customKey'),
   roster: $('#roster'), chairSel: $('#chairSel'), addModel: $('#btnAddModel'), saveSettings: $('#btnSaveSettings'),
+  providerSel: $('#providerSel'), providerHint: $('#providerHint'), searchField: $('#searchField'),
   modelSearch: $('#modelSearch'), modelList: $('#modelList'), manualId: $('#manualId'), addManual: $('#btnAddManual'),
 };
 
@@ -391,8 +434,11 @@ function load() {
     const raw = localStorage.getItem(STORE);
     if (!raw) return;
     const d = JSON.parse(raw);
-    if (typeof d.key === 'string') state.key = d.key;
-    if (Array.isArray(d.seats) && d.seats.length) state.seats = d.seats.map(s => ({ id: String(s.id), name: String(s.name || s.id), hue: Number(s.hue) || 1, on: s.on !== false }));
+    if (d.keys && typeof d.keys === 'object') for (const k of Object.keys(state.keys)) if (typeof d.keys[k] === 'string') state.keys[k] = d.keys[k];
+    if (typeof d.customBase === 'string') state.customBase = d.customBase;
+    if (Array.isArray(d.seats) && d.seats.length) state.seats = d.seats
+      .filter(s => s && PROVIDERS[s.provider] && s.model)
+      .map(s => ({ id: `${s.provider}:${s.model}`, provider: s.provider, model: String(s.model), name: String(s.name || s.model), hue: Number(s.hue) || 1, on: s.on !== false }));
     if (typeof d.chair === 'string') state.chair = d.chair;
     if ([1, 2, 3].includes(d.passes)) state.passes = d.passes;
     if (LENGTHS[d.length]) state.length = d.length;
@@ -400,7 +446,7 @@ function load() {
 }
 function save() {
   try {
-    localStorage.setItem(STORE, JSON.stringify({ key: state.key, seats: state.seats, chair: state.chair, passes: state.passes, length: state.length }));
+    localStorage.setItem(STORE, JSON.stringify({ keys: state.keys, customBase: state.customBase, seats: state.seats, chair: state.chair, passes: state.passes, length: state.length }));
   } catch (e) { /* ignore */ }
 }
 
@@ -409,8 +455,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const initial = name => (name.trim()[0] || '?').toUpperCase();
 const attending = () => state.seats.filter(s => s.on);
 const chairSeat = () => attending().find(s => s.id === state.chair) || attending()[attending().length - 1] || null;
-const fmtUSD = n => n >= 0.01 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(4)}` : '$0.00';
 const fmtInt = n => Number(n || 0).toLocaleString('en-US');
+const providerLabel = p => (PROVIDERS[p] || {}).label || p;
 function nextHue() {
   const used = new Set(state.seats.map(s => s.hue));
   for (let h = 1; h <= 8; h++) if (!used.has(h)) return h;
@@ -425,6 +471,8 @@ function isDark() {
   return t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 }
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const puterReady = () => typeof window.puter === 'object' && window.puter && window.puter.ai && typeof window.puter.ai.chat === 'function';
+const puterSignedIn = () => { try { return puterReady() && puter.auth.isSignedIn(); } catch (e) { return false; } };
 
 /* Minimal, safe markdown: everything is HTML-escaped first, so model output can never inject markup. */
 function renderMd(src) {
@@ -670,7 +718,7 @@ function renderSeats() {
     b.className = 'seat' + (s.on ? ' on' : '') + (state.missing.has(s.id) ? ' warn' : '');
     b.style.setProperty('--seat', `var(--seat-${s.hue})`);
     b.setAttribute('aria-pressed', s.on ? 'true' : 'false');
-    b.title = state.missing.has(s.id) ? `${s.id} is not in OpenRouter's catalog right now` : (s.on ? `${s.name} is attending (${s.id}). Click to excuse.` : `${s.name} is excused. Click to seat.`);
+    b.title = state.missing.has(s.id) ? `${s.model} is not in Puter's catalog right now` : (s.on ? `${s.name} is attending (${s.model} via ${providerLabel(s.provider)}). Click to excuse.` : `${s.name} is excused. Click to seat.`);
     b.innerHTML = `<span class="dot">${esc(initial(s.name))}</span>${esc(s.name)}${chair && chair.id === s.id && s.on ? '<span class="chair-badge">Chair</span>' : ''}`;
     b.addEventListener('click', () => { if (state.running) return; s.on = !s.on; save(); renderSeats(); renderMeta(); });
     els.seats.appendChild(b);
@@ -701,11 +749,11 @@ function renderRoster() {
     row.innerHTML = `
       <span class="dot">${esc(initial(s.name))}</span>
       <div class="names">
-        <input type="text" value="${esc(s.name)}" aria-label="Display name for ${esc(s.id)}" maxlength="40">
-        <span class="model-id">${esc(s.id)}${state.missing.has(s.id) ? ' <span class="warn-txt">· not in catalog</span>' : ''}</span>
+        <input type="text" value="${esc(s.name)}" aria-label="Display name for ${esc(s.model)}" maxlength="40">
+        <span class="model-id">${esc(s.model)} · ${esc(providerLabel(s.provider))}${state.missing.has(s.id) ? ' <span class="warn-txt">· not in catalog</span>' : ''}</span>
       </div>
       <button class="btn ghost small" type="button" aria-label="Remove ${esc(s.name)}">Remove</button>`;
-    row.querySelector('input').addEventListener('change', e => { s.name = e.target.value.trim() || s.id.split('/').pop(); row.querySelector('.dot').textContent = initial(s.name); renderChairSel(); });
+    row.querySelector('input').addEventListener('change', e => { s.name = e.target.value.trim() || s.model.split('/').pop(); row.querySelector('.dot').textContent = initial(s.name); renderChairSel(); });
     row.querySelector('button').addEventListener('click', () => { state.seats = state.seats.filter(x => x !== s); renderRoster(); renderChairSel(); });
     els.roster.appendChild(row);
   }
@@ -715,71 +763,114 @@ function renderChairSel() {
   els.chairSel.innerHTML = '';
   for (const s of state.seats) {
     const o = document.createElement('option');
-    o.value = s.id; o.textContent = `${s.name} · ${s.id}`;
+    o.value = s.id; o.textContent = `${s.name} · ${s.model}`;
     if (s.id === state.chair) o.selected = true;
     els.chairSel.appendChild(o);
   }
   if (!state.seats.some(s => s.id === state.chair) && state.seats.length) els.chairSel.value = state.seats[state.seats.length - 1].id;
 }
+async function renderPuterStatus() {
+  if (!puterReady()) { els.puterStatus.textContent = 'Puter did not load in this browser (js.puter.com may be blocked).'; els.puterIn.hidden = true; els.puterOut.hidden = true; return; }
+  if (puterSignedIn()) {
+    let who = '';
+    try { const u = await puter.auth.getUser(); who = u && u.username ? ` as ${u.username}` : ''; } catch (e) { /* fine */ }
+    els.puterStatus.textContent = `Signed in${who}.`;
+    els.puterIn.hidden = true; els.puterOut.hidden = false;
+  } else {
+    els.puterStatus.textContent = 'Not signed in. The Claude, GPT, Gemini and Grok seats need this.';
+    els.puterIn.hidden = false; els.puterOut.hidden = true;
+  }
+}
 function openSettings(focus) {
-  els.apiKey.value = state.key;
-  renderRoster(); renderChairSel();
+  els.keyGoogle.value = state.keys.google; els.keyGroq.value = state.keys.groq; els.keyMistral.value = state.keys.mistral;
+  els.customBase.value = state.customBase; els.customKey.value = state.keys.custom;
+  renderRoster(); renderChairSel(); renderPuterStatus();
   for (const r of document.querySelectorAll('input[name=passes]')) r.checked = Number(r.value) === state.passes;
   for (const r of document.querySelectorAll('input[name=length]')) r.checked = r.value === state.length;
   els.settings.showModal();
-  if (focus === 'key') els.apiKey.focus();
+  if (focus === 'google') els.keyGoogle.focus();
+  if (focus === 'puter') els.puterIn.focus();
 }
 function saveSettings() {
-  state.key = els.apiKey.value.trim();
+  state.keys.google = els.keyGoogle.value.trim(); state.keys.groq = els.keyGroq.value.trim(); state.keys.mistral = els.keyMistral.value.trim();
+  state.customBase = els.customBase.value.trim().replace(/\/+$/, ''); state.keys.custom = els.customKey.value.trim();
   state.chair = els.chairSel.value || state.chair;
   const p = document.querySelector('input[name=passes]:checked'); if (p) state.passes = Number(p.value);
   const l = document.querySelector('input[name=length]:checked'); if (l) state.length = l.value;
   save();
   els.settings.close();
   renderSeats(); renderMeta();
-  setStatus(state.key ? 'Ready to convene' : 'Add your OpenRouter key in Settings');
+  setStatus(readyText());
+}
+function readyText() {
+  const needsPuter = attending().some(s => s.provider === 'puter');
+  if (needsPuter && !puterSignedIn()) return 'Sign in to Puter to convene (Settings)';
+  return 'Ready to convene';
 }
 
-/* ---------- model catalog & picker ---------- */
-async function loadCatalog() {
-  if (state.catalog) return state.catalog;
-  const res = await fetch(`${OR}/models`);
-  if (!res.ok) throw new Error(`OpenRouter answered ${res.status}`);
+/* ---------- Puter catalog & picker ---------- */
+async function loadPuterCatalog() {
+  if (state.puterCatalog) return state.puterCatalog;
+  const res = await fetch('https://api.puter.com/puterai/chat/models');
+  if (!res.ok) throw new Error(`Puter answered ${res.status}`);
   const j = await res.json();
-  const list = (j.data || []).filter(m => m && m.id && !m.id.endsWith(':batch'));
-  list.sort((a, b) => (b.created || 0) - (a.created || 0));
-  state.catalog = list;
-  const ids = new Set(list.map(m => m.id));
-  state.missing = new Set(state.seats.filter(s => !ids.has(s.id)).map(s => s.id));
-  return list;
+  const raw = Array.isArray(j) ? j : (j.models || []);
+  const ids = new Set();
+  for (const entry of raw) {
+    const s = String(entry);
+    const model = s.includes(':') ? s.slice(s.indexOf(':') + 1) : s;
+    if (/:(batch|flex|priority)$/.test(model)) continue;
+    ids.add(model);
+  }
+  state.puterCatalog = [...ids].sort();
+  state.missing = new Set(state.seats.filter(s => s.provider === 'puter' && !ids.has(s.model)).map(s => s.id));
+  return state.puterCatalog;
 }
-function shortName(m) {
-  const n = String(m.name || m.id);
-  return n.includes(':') ? n.split(':').slice(1).join(':').trim() : n;
-}
-function perM(x) { const n = Number(x); return isFinite(n) ? `$${(n * 1e6).toFixed(n * 1e6 < 1 ? 2 : 0)}` : '—'; }
-function renderModelList() {
-  const q = els.modelSearch.value.trim().toLowerCase();
-  const list = (state.catalog || []).filter(m => !q || m.id.toLowerCase().includes(q) || String(m.name || '').toLowerCase().includes(q)).slice(0, 80);
-  if (state.catalogError) { els.modelList.innerHTML = `<div class="empty">Couldn't load the catalog (${esc(state.catalogError)}). Add a model by id below.</div>`; return; }
-  if (!state.catalog) { els.modelList.innerHTML = '<div class="empty">Loading the catalog…</div>'; return; }
-  if (!list.length) { els.modelList.innerHTML = '<div class="empty">Nothing matches. Try another word or add by id.</div>'; return; }
-  els.modelList.innerHTML = '';
-  for (const m of list) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'model-row';
-    const p = m.pricing || {};
-    b.innerHTML = `<span><span class="nm">${esc(shortName(m))}</span><span class="model-id">${esc(m.id)}</span></span><span class="price">${perM(p.prompt)} in · ${perM(p.completion)} out /M</span>`;
-    b.addEventListener('click', () => addSeat(m.id, shortName(m)));
-    els.modelList.appendChild(b);
+function renderProviderSel() {
+  els.providerSel.innerHTML = '';
+  for (const [k, p] of Object.entries(PROVIDERS)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = p.label; if (k === state.pickerProvider) o.selected = true;
+    els.providerSel.appendChild(o);
   }
 }
-function addSeat(id, name) {
-  id = id.trim(); if (!id) return;
+function renderModelList() {
+  const pv = state.pickerProvider, P = PROVIDERS[pv];
+  const keyNote = P.keyField && !(pv === 'custom' ? state.customBase : state.keys[P.keyField]) ? ` <strong>Needs ${pv === 'custom' ? 'a base URL' : 'a key'} in Settings${P.keyUrl ? ` (<a href="${P.keyUrl}" target="_blank" rel="noopener">get one</a>)` : ''}.</strong>` : '';
+  els.providerHint.innerHTML = esc(P.hint) + keyNote;
+  els.searchField.hidden = pv !== 'puter';
+  els.manualId.placeholder = pv === 'puter' ? 'vendor/model-id as Puter lists it' : (pv === 'ollama' ? 'model name as `ollama list` shows it' : 'model id');
+  if (pv === 'puter') {
+    if (state.puterCatalogError) { els.modelList.innerHTML = `<div class="empty">Couldn't load Puter's catalog (${esc(state.puterCatalogError)}). Add a model by id below.</div>`; return; }
+    if (!state.puterCatalog) { els.modelList.innerHTML = '<div class="empty">Loading Puter\'s catalog…</div>'; return; }
+    const q = els.modelSearch.value.trim().toLowerCase();
+    const list = state.puterCatalog.filter(m => !q || m.toLowerCase().includes(q)).slice(0, 100);
+    if (!list.length) { els.modelList.innerHTML = '<div class="empty">Nothing matches. Try another word or add by id.</div>'; return; }
+    els.modelList.innerHTML = '';
+    for (const m of list) els.modelList.appendChild(modelRow(m, m.split('/')[0], () => addSeat(pv, m)));
+    return;
+  }
+  if (!P.models.length) { els.modelList.innerHTML = '<div class="empty">Type the model id below.</div>'; return; }
+  els.modelList.innerHTML = '';
+  for (const m of P.models) els.modelList.appendChild(modelRow(m, P.label.replace(/\s*\(.*\)$/, ''), () => addSeat(pv, m)));
+}
+function modelRow(id, note, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'model-row';
+  b.innerHTML = `<span><span class="nm">${esc(id.includes('/') ? id.split('/').slice(1).join('/') : id)}</span><span class="model-id">${esc(id)}</span></span><span class="price">${esc(note)}</span>`;
+  b.addEventListener('click', onClick);
+  return b;
+}
+function defaultName(model) {
+  const base = (model.includes('/') ? model.split('/').pop() : model).split(':')[0];
+  return base.charAt(0).toUpperCase() + base.slice(1);
+}
+function addSeat(provider, model) {
+  model = String(model || '').trim(); if (!model || !PROVIDERS[provider]) return;
+  const id = `${provider}:${model}`;
   if (state.seats.some(s => s.id === id)) { els.picker.close(); return; }
-  let nm = (name || id.split('/').pop()).trim();
-  if (state.seats.some(s => s.name.toLowerCase() === nm.toLowerCase())) nm = `${nm} (${id.split('/')[0]})`;
-  state.seats.push({ id, name: nm, hue: nextHue(), on: true });
+  let nm = defaultName(model);
+  if (state.seats.some(s => s.name.toLowerCase() === nm.toLowerCase())) nm = `${nm} (${providerLabel(provider).split(' ')[0]})`;
+  state.seats.push({ id, provider, model, name: nm, hue: nextHue(), on: true });
   save();
   els.picker.close();
   renderSeats(); renderMeta();
@@ -787,32 +878,19 @@ function addSeat(id, name) {
 }
 function openPicker() {
   els.modelSearch.value = ''; els.manualId.value = '';
-  state.catalogError = null;
+  state.puterCatalogError = null;
+  renderProviderSel();
   els.picker.showModal();
   renderModelList();
-  loadCatalog().then(renderModelList).catch(e => { state.catalogError = e.message; renderModelList(); });
-  setTimeout(() => els.modelSearch.focus(), 50);
+  if (state.pickerProvider === 'puter') loadPuterCatalog().then(renderModelList).catch(e => { state.puterCatalogError = e.message; renderModelList(); });
+  setTimeout(() => (state.pickerProvider === 'puter' ? els.modelSearch : els.manualId).focus(), 50);
 }
 
-/* ---------- OpenRouter streaming ---------- */
-async function stream(model, messages, maxTokens, onText, signal) {
-  const res = await fetch(`${OR}/chat/completions`, {
-    method: 'POST', signal,
-    headers: { 'Authorization': `Bearer ${state.key}`, 'Content-Type': 'application/json', 'X-Title': 'Quorum' },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: maxTokens, usage: { include: true } }),
-  });
-  if (!res.ok) {
-    let msg = `${res.status} ${res.statusText}`.trim();
-    try { const j = await res.json(); msg = (j.error && j.error.message) || msg; } catch (e) { /* keep status */ }
-    throw new Error(msg);
-  }
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '', text = '', usage = null;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
+/* ---------- streaming adapters: one per kind of service ---------- */
+function parseSse(onJson) {
+  let buf = '';
+  return chunk => {
+    buf += chunk;
     let nl;
     while ((nl = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
@@ -820,13 +898,86 @@ async function stream(model, messages, maxTokens, onText, signal) {
       const data = line.slice(5).trim();
       if (data === '[DONE]') continue;
       let j; try { j = JSON.parse(data); } catch (e) { continue; }
-      if (j.error) throw new Error(j.error.message || 'The model returned an error');
-      const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
-      if (delta) { text += delta; onText(text); }
-      if (j.usage) usage = j.usage;
+      onJson(j);
     }
+  };
+}
+async function readStream(res, onJson) {
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  const feed = parseSse(onJson);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    feed(dec.decode(value, { stream: true }));
   }
+}
+async function httpError(res, fallback) {
+  let msg = `${res.status} ${res.statusText}`.trim() || fallback;
+  try { const j = await res.json(); msg = (j.error && (j.error.message || j.error)) || j.message || j.detail || msg; if (typeof msg !== 'string') msg = JSON.stringify(msg); } catch (e) { /* keep status */ }
+  return new Error(msg);
+}
+
+async function streamOpenAI(seat, messages, maxTokens, onText, signal) {
+  const P = PROVIDERS[seat.provider];
+  const base = seat.provider === 'custom' ? state.customBase : P.base;
+  if (!base) throw new Error('No endpoint URL in Settings');
+  const key = P.keyField ? state.keys[P.keyField] : '';
+  if (P.keyField && seat.provider !== 'custom' && !key) throw new Error(`No ${P.label.replace(/\s*\(.*\)$/, '')} key in Settings`);
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = `Bearer ${key}`;
+  const res = await fetch(`${base}/chat/completions`, { method: 'POST', signal, headers, body: JSON.stringify({ model: seat.model, messages, stream: true, max_tokens: maxTokens }) });
+  if (!res.ok) throw await httpError(res, 'request failed');
+  let text = '', usage = null;
+  await readStream(res, j => {
+    if (j.error) throw new Error(j.error.message || 'The model returned an error');
+    const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+    if (delta) { text += delta; onText(text); }
+    const u = j.usage || (j.x_groq && j.x_groq.usage);
+    if (u) usage = { total_tokens: u.total_tokens };
+  });
   return { text, usage };
+}
+
+async function streamGoogle(seat, messages, maxTokens, onText, signal) {
+  const key = state.keys.google;
+  if (!key) throw new Error('No Google Gemini key in Settings');
+  const sys = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+  const contents = messages.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+  const body = { contents };
+  if (sys) body.system_instruction = { parts: [{ text: sys }] };
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(seat.model)}:streamGenerateContent?alt=sse`, {
+    method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw await httpError(res, 'request failed');
+  let text = '', usage = null;
+  await readStream(res, j => {
+    if (j.error) throw new Error(j.error.message || 'Gemini returned an error');
+    const c = j.candidates && j.candidates[0];
+    const parts = c && c.content && c.content.parts || [];
+    for (const p of parts) if (typeof p.text === 'string' && !p.thought) { text += p.text; onText(text); }
+    if (j.usageMetadata && j.usageMetadata.totalTokenCount) usage = { total_tokens: j.usageMetadata.totalTokenCount };
+  });
+  return { text, usage };
+}
+
+async function streamPuter(seat, messages, maxTokens, onText, signal) {
+  if (!puterReady()) throw new Error('Puter did not load in this browser');
+  if (!puterSignedIn()) throw new Error('Not signed in to Puter');
+  const resp = await puter.ai.chat(messages, false, { model: seat.model, stream: true, max_tokens: maxTokens, signal });
+  let text = '';
+  for await (const part of resp) {
+    if (signal.aborted) { const e = new Error('aborted'); e.name = 'AbortError'; throw e; }
+    if (!part) continue;
+    if (part.type === 'error') throw new Error(part.message || 'Puter returned an error');
+    if (typeof part.text === 'string' && (!part.type || part.type === 'text')) { text += part.text; onText(text); }
+  }
+  return { text, usage: null };
+}
+
+function streamFor(seat) {
+  const kind = (PROVIDERS[seat.provider] || {}).kind;
+  return kind === 'puter' ? streamPuter : kind === 'google' ? streamGoogle : streamOpenAI;
 }
 
 /* ---------- prompts ---------- */
@@ -844,7 +995,7 @@ function participantMessages(seat, pass, order, chair, transcript, question) {
   const job = pass === 1
     ? "Give your opening position: the best answer you can, with your reasoning and the facts it rests on. If colleagues have already spoken in this pass, engage with them directly: say where you agree, where you disagree and why, and correct anything you believe is wrong. Don't repeat points already made; add what is missing."
     : "Respond to the discussion so far. If a colleague made a better case, say so and update your position. Where you still disagree, say exactly what you disagree with and why. Name anything that is still unresolved.";
-  const system = `You are ${seat.name} (model: ${seat.id}), one of ${order.length} AI models seated at a roundtable convened to answer a question for a user. Attendees in speaking order: ${names}. ${chair.name} chairs the meeting and will write the final answer once the discussion ends. The meeting runs ${state.passes} pass${state.passes === 1 ? '' : 'es'} around the table; this is pass ${pass}.
+  const system = `You are ${seat.name} (model: ${seat.model}), one of ${order.length} AI models seated at a roundtable convened to answer a question for a user. Attendees in speaking order: ${names}. ${chair.name} chairs the meeting and will write the final answer once the discussion ends. The meeting runs ${state.passes} pass${state.passes === 1 ? '' : 'es'} around the table; this is pass ${pass}.
 
 How to use this turn: ${job}
 
@@ -866,7 +1017,7 @@ It is your turn, ${seat.name}.`;
 function chairMessages(chair, order, transcript, question) {
   const L = LENGTHS[state.length];
   const names = order.map(s => s.name).join(', ');
-  const system = `You are ${chair.name} (model: ${chair.id}), chair of a roundtable of AI models (${names}). The discussion has concluded. Write the final answer to the user's question.
+  const system = `You are ${chair.name} (model: ${chair.model}), chair of a roundtable of AI models (${names}). The discussion has concluded. Write the final answer to the user's question.
 
 - Draw on the strongest points made by any attendee and on your own judgment; you are not bound to a majority.
 - Write for the user, not for the room: don't narrate the meeting, and don't attribute points to attendees in the main answer.
@@ -907,7 +1058,7 @@ function addTurn(seat, stateTxt) {
   el.innerHTML = `
     <div class="seat-mark" aria-hidden="true">${esc(initial(seat.name))}</div>
     <div class="turn-body">
-      <header class="turn-head"><span class="speaker">${esc(seat.name)}</span><span class="model-id">${esc(seat.id)}</span><span class="turn-state ${esc(stateTxt)}">${esc(stateTxt)}</span></header>
+      <header class="turn-head"><span class="speaker">${esc(seat.name)}</span><span class="model-id">${esc(seat.model)}</span><span class="turn-state ${esc(stateTxt)}">${esc(stateTxt)}</span></header>
       <div class="turn-text md${stateTxt === 'speaking' ? ' streaming' : ''}"></div>
     </div>`;
   els.minutes.appendChild(el);
@@ -925,7 +1076,7 @@ function addResolution(chair) {
   el.innerHTML = `
     <header class="resolution-head">
       <span class="eyebrow">Resolution</span>
-      <span class="row"><span class="by">Chair · ${esc(chair.name)} · <span class="model-id">${esc(chair.id)}</span></span><button class="btn ghost small" type="button">Copy</button></span>
+      <span class="row"><span class="by">Chair · ${esc(chair.name)} · <span class="model-id">${esc(chair.model)}</span></span><button class="btn ghost small" type="button">Copy</button></span>
     </header>
     <div class="md turn-text streaming"></div>`;
   els.minutes.appendChild(el);
@@ -954,12 +1105,24 @@ function scrollIntoViewIfBelow(el) {
 }
 
 /* ---------- the meeting ---------- */
+async function ensurePuter() {
+  if (!attending().some(s => s.provider === 'puter')) return true;
+  if (!puterReady()) { setStatus('Puter did not load; the frontier seats can\'t run'); return false; }
+  if (puterSignedIn()) return true;
+  setStatus('Sign in to Puter in the popup…');
+  try { await puter.auth.signIn(); } catch (e) { /* closed or refused */ }
+  if (!puterSignedIn()) { setStatus('Not signed in to Puter'); openSettings('puter'); return false; }
+  return true;
+}
 async function convene() {
   const question = els.question.value.trim();
   if (!question) { els.question.focus(); return; }
-  if (!state.key) { setStatus('Add your OpenRouter key to convene'); openSettings('key'); return; }
   const order0 = attending();
   if (order0.length < 2) { setStatus('Seat at least two attendees'); return; }
+  const missingKey = order0.find(s => { const P = PROVIDERS[s.provider]; return P.keyField && s.provider !== 'custom' && !state.keys[P.keyField]; });
+  if (missingKey) { setStatus(`${missingKey.name} needs a ${providerLabel(missingKey.provider).replace(/\s*\(.*\)$/, '')} key`); openSettings(missingKey.provider === 'google' ? 'google' : undefined); return; }
+  if (!(await ensurePuter())) return;   // sign-in popup opens from this click, before anything else awaits
+
   const chair = chairSeat();
   const order = [...order0.filter(s => s !== chair), chair];
 
@@ -973,9 +1136,9 @@ async function convene() {
   addAgendaItem(question);
 
   const transcript = [];
-  let tokens = 0, cost = 0, turns = 0, aborted = false;
+  let tokens = 0, turns = 0, aborted = false;
   const L = LENGTHS[state.length];
-  const tally = u => { if (!u) return; tokens += Number(u.total_tokens || 0); cost += Number(u.cost || 0); };
+  const tally = u => { if (u) tokens += Number(u.total_tokens || 0); };
 
   try {
     for (let pass = 1; pass <= state.passes && !aborted; pass++) {
@@ -989,15 +1152,15 @@ async function convene() {
         scrollIntoViewIfBelow(t.el);
         const paint = throttled(txt => { t.text.innerHTML = renderMd(txt); scrollIntoViewIfBelow(t.el); });
         try {
-          const { text, usage } = await stream(seat.id, participantMessages(seat, pass, order, chair, transcript, question), L.tokens, paint, signal);
+          const { text, usage } = await streamFor(seat)(seat, participantMessages(seat, pass, order, chair, transcript, question), L.tokens, paint, signal);
           t.text.innerHTML = renderMd(text || '(said nothing)');
           transcript.push({ name: seat.name, pass, text: text || '(said nothing)' });
           setTurnState(t, 'yielded');
           Room.status(seat.id, 'done');
           tally(usage); turns++;
         } catch (e) {
-          if (signal.aborted) { aborted = true; setTurnState(t, 'interrupted'); Room.status(seat.id, 'idle'); break; }
-          setTurnState(t, 'absent', `${seat.name} did not respond: ${e.message}`);
+          if (signal.aborted || (e && e.name === 'AbortError')) { aborted = true; setTurnState(t, 'interrupted'); Room.status(seat.id, 'idle'); break; }
+          setTurnState(t, 'absent', `${seat.name} did not respond: ${e && e.message ? e.message : e}`);
           Room.status(seat.id, 'absent');
           transcript.push({ name: seat.name, pass, text: `(did not respond this pass)` });
         }
@@ -1010,7 +1173,7 @@ async function convene() {
       scrollIntoViewIfBelow(r.el);
       const paint = throttled(txt => { r.text.innerHTML = renderMd(txt); scrollIntoViewIfBelow(r.el); });
       try {
-        const { text, usage } = await stream(chair.id, chairMessages(chair, order, transcript, question), Math.max(L.tokens * 2, 1500), paint, signal);
+        const { text, usage } = await streamFor(chair)(chair, chairMessages(chair, order, transcript, question), Math.max(L.tokens * 2, 1500), paint, signal);
         r.text.innerHTML = renderMd(text || '(no resolution)');
         r.text.dataset.raw = text;
         r.text.classList.remove('streaming');
@@ -1018,15 +1181,15 @@ async function convene() {
         tally(usage); turns++;
       } catch (e) {
         r.text.classList.remove('streaming');
-        if (signal.aborted) { aborted = true; r.text.innerHTML = '<p class="err">Interrupted before the resolution was written.</p>'; Room.status(chair.id, 'idle'); }
-        else { r.text.innerHTML = `<p class="err">The chair could not write the resolution: ${esc(e.message)}</p>`; Room.status(chair.id, 'absent'); }
+        if (signal.aborted || (e && e.name === 'AbortError')) { aborted = true; r.text.innerHTML = '<p class="err">Interrupted before the resolution was written.</p>'; Room.status(chair.id, 'idle'); }
+        else { r.text.innerHTML = `<p class="err">The chair could not write the resolution: ${esc(e && e.message ? e.message : e)}</p>`; Room.status(chair.id, 'absent'); }
       }
     }
   } finally {
     state.running = false; state.abort = null;
     els.convene.disabled = false; els.stop.hidden = true; els.question.readOnly = false;
-    const costTxt = cost > 0 ? ` · ≈ ${fmtUSD(cost)}` : '';
-    const line = `${aborted ? 'Adjourned early' : 'Adjourned'} · ${turns} turn${turns === 1 ? '' : 's'} · ${fmtInt(tokens)} tokens${costTxt}`;
+    const tokTxt = tokens > 0 ? ` · ${fmtInt(tokens)} tokens` : '';
+    const line = `${aborted ? 'Adjourned early' : 'Adjourned'} · ${turns} turn${turns === 1 ? '' : 's'}${tokTxt}`;
     addAdjourn(line);
     setStatus(line);
   }
@@ -1037,7 +1200,7 @@ function renderSample() {
   els.minutes.innerHTML = '';
   const note = document.createElement('div');
   note.className = 'sample-note';
-  note.innerHTML = '<strong>Sample minutes.</strong> Illustrative only, written by hand to show the format. Add your OpenRouter key in Settings, type a question above, and convene for a live session.';
+  note.innerHTML = '<strong>Sample minutes.</strong> Illustrative only, written by hand to show the format. Type a question above and convene for a live session; the first time, Puter will ask you to sign in.';
   els.minutes.appendChild(note);
   const seats = Object.fromEntries(DEFAULT_SEATS.map(s => [s.name, s]));
   addAgendaItem('Is a hot dog a sandwich?');
@@ -1069,7 +1232,7 @@ function renderSample() {
 load();
 renderSeats(); renderMeta(); renderSample();
 Room.resize(); Room.start();
-setStatus(state.key ? 'Ready to convene' : 'Add your OpenRouter key in Settings');
+setStatus(readyText());
 
 els.convene.addEventListener('click', convene);
 els.stop.addEventListener('click', () => { if (state.abort) state.abort.abort(); });
@@ -1077,19 +1240,23 @@ els.question.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && 
 els.question.addEventListener('input', () => { if (!state.running) Room.setAgenda(els.question.value); });
 $('#btnSettings').addEventListener('click', () => openSettings());
 els.saveSettings.addEventListener('click', saveSettings);
-els.showKey.addEventListener('click', () => { const show = els.apiKey.type === 'password'; els.apiKey.type = show ? 'text' : 'password'; els.showKey.textContent = show ? 'Hide' : 'Show'; });
+els.puterIn.addEventListener('click', async () => { if (!puterReady()) return; try { await puter.auth.signIn(); } catch (e) { /* closed */ } renderPuterStatus(); setStatus(readyText()); });
+els.puterOut.addEventListener('click', async () => { try { await puter.auth.signOut(); } catch (e) { /* ignore */ } renderPuterStatus(); setStatus(readyText()); });
 els.addModel.addEventListener('click', openPicker);
+els.providerSel.addEventListener('change', () => { state.pickerProvider = els.providerSel.value; renderModelList(); if (state.pickerProvider === 'puter' && !state.puterCatalog) loadPuterCatalog().then(renderModelList).catch(e => { state.puterCatalogError = e.message; renderModelList(); }); });
 els.modelSearch.addEventListener('input', renderModelList);
-els.addManual.addEventListener('click', () => addSeat(els.manualId.value));
-els.manualId.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSeat(els.manualId.value); } });
+els.addManual.addEventListener('click', () => addSeat(state.pickerProvider, els.manualId.value));
+els.manualId.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSeat(state.pickerProvider, els.manualId.value); } });
 for (const d of [els.settings, els.picker]) {
   d.querySelector('[data-close]').addEventListener('click', () => d.close());
   d.addEventListener('click', e => { if (e.target === d) d.close(); });
 }
 els.settings.addEventListener('close', () => { renderSeats(); renderMeta(); });
 
-// Quietly check the seats against the live catalog so a retired model id is flagged before a session, not during one.
-loadCatalog().then(() => { renderSeats(); }).catch(() => { /* offline or blocked: the picker will say so when opened */ });
+// Quietly check the Puter seats against the live catalog so a retired model id is flagged before a session, not during one.
+loadPuterCatalog().then(() => { renderSeats(); }).catch(() => { /* offline or blocked: the picker will say so when opened */ });
+// Puter's script loads async; refresh the status line once it is there.
+window.addEventListener('load', () => setStatus(readyText()));
 })();
 </script>
 </body>
